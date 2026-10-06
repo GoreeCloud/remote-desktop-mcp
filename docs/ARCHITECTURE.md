@@ -63,6 +63,8 @@ Responsibilities:
 - maintains the connected-device registry;
 - exposes device capability and health discovery through authenticated agent RPC;
 - forwards approved device RPC calls to the agent;
+- binds each pending RPC to the exact authenticated agent WebSocket and ignores responses from other connections;
+- fails old in-flight calls when an agent connection is replaced without cancelling new-connection calls;
 - enforces MCP authentication mode;
 - refuses unauthenticated MCP mode when bound to a non-loopback address.
 

@@ -52,6 +52,8 @@ The current implementation has been validated end-to-end for read-only access:
 - the Responses API can discover and call the MCP tools through the tunnel;
 - `npm run chat` can list devices, inspect broker/device health, inspect device capabilities, page through directories, read files, search files, inspect metadata, and ping the agent;
 - directory listing supports deterministically ordered bounded pagination;
+- broker RPC replies are bound to the exact authenticated agent connection, preventing cross-device reply substitution;
+- replaced agent connections fail pending old requests without affecting the replacement agent's requests;
 - file writes and shell execution remain disabled.
 
 See [Validation Record](docs/VALIDATION.md) for the recorded checks.
@@ -154,6 +156,8 @@ npm run check
 npm audit --audit-level=high
 npm run smoke
 ```
+
+The smoke command runs both the read-only agent checks and an isolated adversarial broker security suite covering MCP/agent authentication, malformed device identifiers, connection replacement, cross-device RPC reply isolation, and disabled administrator access. To run the adversarial checks alone, use `npm run security-smoke`.
 
 For local bearer-token testing without the OpenAI tunnel:
 

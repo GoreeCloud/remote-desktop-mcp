@@ -1,5 +1,21 @@
 # GoreeCloud Remote MCP Changelog
 
+## 2026-10-06 — Connection Identity Security Hardening
+
+### Fixed
+
+- Prevented responses from one authenticated agent connection from fulfilling an RPC sent to another connection.
+- Ensured replacement of an agent with the same device ID rejects only the old connection's pending requests.
+
+### Added
+
+- Adversarial security smoke coverage for MCP/agent authentication, invalid device IDs, disabled administrator access, cross-device RPC responses, and connection replacement.
+- Additional real-agent regression coverage for allowed-root confinement, excessive pagination limits, and end-of-directory paging.
+
+### Safety Boundary
+
+All added controls preserve read-only operation. No write, shell, interactive-session, privileged administration, or public broker capability is enabled.
+
 ## 2026-10-06 — Read-Only Maturity Development Update
 
 ### Added

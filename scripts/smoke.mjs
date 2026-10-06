@@ -83,15 +83,24 @@ try {
   const dirNext = await callTool("goreecloud.remote.list_directory", {
     deviceId: "smoke-device", path: process.cwd(), offset: 1, limit: 1
   }, 105);
+  const finalPage = await callTool("goreecloud.remote.list_directory", {
+    deviceId: "smoke-device", path: process.cwd(), offset: 100000, limit: 3
+  }, 106);
+  const deniedOutsideRoot = await callTool("goreecloud.remote.list_directory", {
+    deviceId: "smoke-device", path: process.cwd() + "/.."
+  }, 107);
+  const rejectedPageLimit = await callTool("goreecloud.remote.list_directory", {
+    deviceId: "smoke-device", path: process.cwd(), limit: 1001
+  }, 108);
   const read = await callTool("goreecloud.remote.read_file", {
     deviceId: "smoke-device", path: process.cwd() + "/package.json", offset: 0, length: 20
-  }, 106);
+  }, 109);
   const deniedWrite = await callTool("goreecloud.remote.write_file", {
     deviceId: "smoke-device", path: process.cwd() + "/smoke-write.txt", content: "should-not-write"
-  }, 107);
+  }, 110);
   const deniedShell = await callTool("goreecloud.remote.execute_command", {
     deviceId: "smoke-device", command: "pwd", cwd: process.cwd()
-  }, 108);
+  }, 111);
 
   const firstPage = dir.result?.structuredContent;
   const secondPage = dirNext.result?.structuredContent;
@@ -106,13 +115,17 @@ try {
   requireTrue(firstPage?.totalEntries >= 2, "list_directory total entries", dir);
   requireTrue(firstPage?.nextOffset === 1, "list_directory next offset", dir);
   requireTrue(secondPage?.entries?.length === 1, "list_directory second page", dirNext);
-  requireTrue(firstPage?.entries?.[0]?.name !== secondPage?.entries?.[0]?.name, "list_directory stable pagination", { dir, dirNext });
+  requireTrue(firstPage?.entries?.[0]?.name !== secondPage?.entries?.[0]?.name, "list_directory ordered pagination", { dir, dirNext });
+  requireTrue(finalPage.result?.structuredContent?.entries?.length === 0, "list_directory empty final page", finalPage);
+  requireTrue(finalPage.result?.structuredContent?.nextOffset === null, "list_directory completed pagination", finalPage);
+  requireTrue(JSON.stringify(deniedOutsideRoot).includes("outside configured allowed roots"), "allowed-root confinement", deniedOutsideRoot);
+  requireTrue(JSON.stringify(rejectedPageLimit).includes("Number must be less than or equal to 1000"), "oversized directory-page denial", rejectedPageLimit);
   requireTrue(JSON.stringify(read).includes("goreecloud-remote-mcp"), "read_file", read);
   requireTrue(JSON.stringify(deniedWrite).includes("File writes are disabled"), "write denial", deniedWrite);
   requireTrue(JSON.stringify(deniedShell).includes("Shell execution is disabled"), "shell denial", deniedShell);
 
   console.log("health:", JSON.stringify(health));
-  console.log("SMOKE PASS: capability discovery, health diagnostics, directory pagination, read tools, and fail-closed mutation controls");
+  console.log("SMOKE PASS: discovery, diagnostics, bounded pagination, allowed-root denials, read tools, and fail-closed mutation controls");
 } finally {
   stop();
 }

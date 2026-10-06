@@ -26,6 +26,13 @@ This record describes features present in the authoritative repository source af
 - Stable directory pagination using `offset`, `limit`, `totalEntries`, and `nextOffset`.
 - Connected-device summaries include explicit online state and richer agent metadata.
 
+## Connection Identity Hardening
+
+- In-flight RPC responses can only be fulfilled by the authenticated agent WebSocket to which the request was sent.
+- A same-ID agent replacement fails the previous connection's in-flight requests without cancelling requests from the new connection.
+- A separate adversarial security-smoke suite validates MCP token enforcement, agent token enforcement, invalid device IDs, disabled administrator access, cross-device response isolation, and replacement behavior.
+- The real-agent smoke suite additionally validates allowed-root confinement and bounded directory pagination rejection and completion behavior.
+
 ## Fail-Closed Foundations
 
 - `goreecloud.remote.write_file` remains agent opt-in and disabled by default.

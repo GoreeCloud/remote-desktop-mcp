@@ -11,6 +11,8 @@
 - Broker health with bounded operational counters.
 - Device health and readiness reporting.
 - Device capability and enforced-limit discovery.
+- Connection-specific RPC response matching across simultaneous devices and same-ID replacements.
+- Fail-closed in-flight request cancellation when an agent connection is replaced or disconnected.
 
 ## Filesystem
 

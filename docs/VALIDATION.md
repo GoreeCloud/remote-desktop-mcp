@@ -217,7 +217,23 @@ CLI
  -> authenticated device agent
 ```
 
-The subsequent documentation and repository-governance reconciliation does not alter the validated source implementation. The final pull-request head still requires its own repository validation before merge.
+The read-only maturity work was merged through [Pull Request #3](https://github.com/GoreeCloud/remote-mcp/pull/3) as authoritative main commit `a4ac1eac8d61dc4d11c98905c675790ede6b8fce`. Both exact-head pull-request checks and post-merge main checks passed: Node CI and Platform Contract 2.0 conformance. These checks validate Development source and declared conformance state, not production approval.
+
+## Connection identity security regression
+
+A subsequent Development hardening candidate added a dedicated `scripts/security-smoke.mjs` suite, run automatically by `npm run smoke`. It uses a disposable loopback broker and bounded mock agent connections rather than exposing or changing the live broker.
+
+The local candidate security suite passed checks for:
+
+- MCP bearer-token enforcement (unauthorized calls denied).
+- Broker dashboard disabled when administrator credentials are absent.
+- Agent bearer-token enforcement and invalid device ID rejection.
+- Cross-device RPC reply isolation: a forged reply from another authenticated device is ignored in favor of the original connection's reply.
+- Same-ID agent replacement: old in-flight RPCs fail closed and a new connection's independent requests still complete.
+
+The extended real-agent smoke suite passed allowed-root rejection, excessive directory-page limit rejection, end-of-directory paging, read access, and disabled write/shell checks. Both local syntax checking and the dependency audit passed; the audit reported zero known vulnerabilities at the selected threshold.
+
+These are local source-candidate regression results, not public-exposure, hostile-device, production-identity, deployment, or release acceptance evidence. GitHub exact-head CI validation and the merge/readback gates must independently pass before the hardening is treated as authoritative main.
 
 ## Fail-closed controls validated
 

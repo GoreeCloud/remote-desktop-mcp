@@ -93,6 +93,15 @@ function brokerHealth() {
   };
 }
 
+function rejectPendingForConnection(ws, error) {
+  for (const [id, wait] of pending) {
+    if (wait.ws !== ws) continue;
+    clearTimeout(wait.timer);
+    pending.delete(id);
+    wait.reject(error);
+  }
+}
+
 async function rpc(deviceId, action, params = {}) {
   const entry = devices.get(deviceId);
   if (!entry || entry.ws.readyState !== 1) throw new Error(`Device not connected: ${deviceId}`);
@@ -103,7 +112,7 @@ async function rpc(deviceId, action, params = {}) {
       pending.delete(id);
       reject(new Error(`Device RPC timed out after ${rpcTimeoutMs}ms`));
     }, rpcTimeoutMs);
-    pending.set(id, { resolve, reject, timer, deviceId });
+    pending.set(id, { resolve, reject, timer, deviceId, ws: entry.ws });
     entry.ws.send(JSON.stringify({ type: "request", id, action, params }), (error) => {
       if (error) {
         clearTimeout(timer);
@@ -266,7 +275,10 @@ httpServer.on("upgrade", (req, socket, head) => {
 
 wss.on("connection", (ws, _req, deviceId) => {
   const previous = devices.get(deviceId);
-  if (previous && previous.ws.readyState === 1) previous.ws.close(4000, "replaced");
+  if (previous) {
+    rejectPendingForConnection(previous.ws, new Error(`Device connection replaced: ${deviceId}`));
+    if (previous.ws.readyState === 1) previous.ws.close(4000, "replaced");
+  }
   const now = new Date().toISOString();
   const entry = { ws, connectedAt: now, lastSeen: now, metadata: {} };
   devices.set(deviceId, entry);
@@ -279,7 +291,7 @@ wss.on("connection", (ws, _req, deviceId) => {
     if (message.type === "hello") { entry.metadata = message.metadata ?? {}; return; }
     if (message.type === "response" && typeof message.id === "string") {
       const wait = pending.get(message.id);
-      if (!wait) return;
+      if (!wait || wait.ws !== ws) return;
       clearTimeout(wait.timer);
       pending.delete(message.id);
       if (message.ok) wait.resolve(message.result);
@@ -289,11 +301,7 @@ wss.on("connection", (ws, _req, deviceId) => {
 
   ws.on("close", () => {
     if (devices.get(deviceId)?.ws === ws) devices.delete(deviceId);
-    for (const [id, wait] of pending) {
-      if (wait.deviceId === deviceId) {
-        clearTimeout(wait.timer); pending.delete(id); wait.reject(new Error(`Device disconnected: ${deviceId}`));
-      }
-    }
+    rejectPendingForConnection(ws, new Error(`Device disconnected: ${deviceId}`));
   });
 });
 

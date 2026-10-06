@@ -13,6 +13,8 @@ GoreeCloud Remote MCP provides a GoreeCloud-controlled MCP broker and authentica
 
 - The broker binds to loopback by default and must reject unauthenticated MCP mode on non-loopback hosts.
 - The device agent authenticates separately from the MCP client boundary.
+- Each in-flight agent RPC is tied to the exact authenticated WebSocket that received it; a response from another agent connection must not satisfy it.
+- Replacing an agent connection must fail closed for the old connection's pending requests without invalidating requests on the replacement.
 - Filesystem access is restricted to resolved paths under configured allowed roots.
 - Read-only client access exposes device discovery, health, capability discovery, directory listing, text reads, search, and file metadata.
 - Directory listing supports bounded deterministic pagination.
