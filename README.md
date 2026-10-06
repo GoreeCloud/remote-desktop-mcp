@@ -52,6 +52,22 @@ The current implementation has been validated end-to-end for read-only access:
 
 See [Validation Record](docs/VALIDATION.md) for the recorded checks.
 
+## Canonical documentation entry points
+
+The canonical starting point for the repository is this `README.md`.
+
+The full operational runbook is [`docs/SETUP-AND-OPERATIONS.md`](docs/SETUP-AND-OPERATIONS.md).
+
+The current documentation and deployment baseline includes:
+
+- `README.md` — current working state, architecture, quick-use commands, tool list, security defaults, cost model, and documentation index.
+- `docs/ARCHITECTURE.md` — full OpenAI API → Secure MCP Tunnel → broker → agent → filesystem architecture, components, trust boundaries, and deployment modes.
+- `docs/SETUP-AND-OPERATIONS.md` — complete installation and operations runbook: credentials, broker/agent setup, tunnel creation, `tunnel-client`, systemd, API CLI, health checks, updating, troubleshooting, rotation, removal, and write/shell considerations.
+- `docs/VALIDATION.md` — recorded Node/npm/`tunnel-client` versions, service status, health/readiness checks, audit/smoke results, end-to-end Responses API validation, reconnect testing, and remaining production blockers.
+- `SECURITY.md` — current security model covering the API boundary, tunnel boundary, broker-to-agent authentication, filesystem restrictions, systemd hardening, secret handling, and production requirements.
+- `deploy/systemd/goreecloud-remote-mcp-tunnel.service` — reproducible persistent tunnel service.
+- `deploy/systemd/tunnel.env.example` — safe example of the runtime tunnel credential file.
+
 ## Quick use
 
 After the one-time setup is complete:
