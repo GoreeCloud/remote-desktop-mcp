@@ -64,6 +64,7 @@ The current documentation and deployment baseline includes:
 - `docs/ARCHITECTURE.md` — full OpenAI API → Secure MCP Tunnel → broker → agent → filesystem architecture, components, trust boundaries, and deployment modes.
 - `docs/SETUP-AND-OPERATIONS.md` — complete installation and operations runbook: credentials, broker/agent setup, tunnel creation, `tunnel-client`, systemd, API CLI, health checks, updating, troubleshooting, rotation, removal, and write/shell considerations.
 - `docs/VALIDATION.md` — recorded Node/npm/`tunnel-client` versions, service status, health/readiness checks, audit/smoke results, end-to-end Responses API validation, reconnect testing, and remaining production blockers.
+- `PLANNED-FEATURES.md` — long-term capability roadmap covering device management, filesystem and document operations, controlled execution, multi-device workflows, security/privacy controls, risk classes, development phases, and production acceptance requirements.
 - `SECURITY.md` — current security model covering the API boundary, tunnel boundary, broker-to-agent authentication, filesystem restrictions, systemd hardening, secret handling, and production requirements.
 - `deploy/systemd/goreecloud-remote-mcp-tunnel.service` — reproducible persistent tunnel service.
 - `deploy/systemd/tunnel.env.example` — safe example of the runtime tunnel credential file.
@@ -170,6 +171,7 @@ npm run agent
 - [Architecture](docs/ARCHITECTURE.md)
 - [Setup and Operations Guide](docs/SETUP-AND-OPERATIONS.md)
 - [Validation Record](docs/VALIDATION.md)
+- [Planned Features and Capabilities](PLANNED-FEATURES.md)
 - [Security Notes](SECURITY.md)
 - [Example environment](.env.example)
 - [systemd broker service](deploy/systemd/goreecloud-remote-mcp-broker.service)
