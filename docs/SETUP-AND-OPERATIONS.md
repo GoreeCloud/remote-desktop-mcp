@@ -58,7 +58,7 @@ npm audit --audit-level=high
 npm run smoke
 ```
 
-The smoke test validates local MCP connectivity, read operations, and fail-closed mutation controls.
+The smoke test validates local MCP connectivity, broker/device diagnostics, capability discovery, deterministically ordered directory pagination, read operations, and fail-closed mutation controls.
 
 ## 4. Generate local secrets
 
@@ -346,6 +346,9 @@ The CLI currently sends this MCP allowlist to OpenAI:
 
 ```text
 goreecloud.remote.list_devices
+goreecloud.remote.get_health
+goreecloud.remote.get_device_capabilities
+goreecloud.remote.get_device_health
 goreecloud.remote.ping
 goreecloud.remote.list_directory
 goreecloud.remote.read_file

@@ -1,6 +1,9 @@
 # GoreeCloud Remote MCP
 
-**Status: Development prototype. Private read-only path validated. Not production-approved.**
+**Lifecycle:** Forge
+**Deployment state:** Development
+**Current baseline:** Private read-only path validated
+**Production status:** Not production-approved
 
 GoreeCloud Remote MCP is a self-hosted Model Context Protocol bridge designed to replace the paid relay portion of remote MCP services while keeping the device-facing agent under GoreeCloud/user control.
 
@@ -47,7 +50,8 @@ The current implementation has been validated end-to-end for read-only access:
 - the tunnel reports `live` and `ready`;
 - the broker sees the connected device;
 - the Responses API can discover and call the MCP tools through the tunnel;
-- `npm run chat` can list directories, read files, search files, inspect metadata, ping the agent, and list devices;
+- `npm run chat` can list devices, inspect broker/device health, inspect device capabilities, page through directories, read files, search files, inspect metadata, and ping the agent;
+- directory listing supports deterministically ordered bounded pagination;
 - file writes and shell execution remain disabled.
 
 See [Validation Record](docs/VALIDATION.md) for the recorded checks.
@@ -63,9 +67,12 @@ The current documentation and deployment baseline includes:
 - `README.md` — current working state, architecture, quick-use commands, tool list, security defaults, cost model, and documentation index.
 - `docs/ARCHITECTURE.md` — full OpenAI API → Secure MCP Tunnel → broker → agent → filesystem architecture, components, trust boundaries, and deployment modes.
 - `docs/SETUP-AND-OPERATIONS.md` — complete installation and operations runbook: credentials, broker/agent setup, tunnel creation, `tunnel-client`, systemd, API CLI, health checks, updating, troubleshooting, rotation, removal, and write/shell considerations.
+- `docs/SPECIFICATIONS.md` — current Development requirements and accepted read-only boundary.
+- `docs/FEATURES.md` and `docs/IMPLEMENTED-FEATURES.md` — current Development functionality and verified source implementation lifecycle.
+- `docs/PLANNED-FEATURES.md` — long-term capability roadmap and production acceptance direction.
+- `docs/CHANGELOGS.md` — repository-native change history.
 - `docs/VALIDATION.md` — recorded Node/npm/`tunnel-client` versions, service status, health/readiness checks, audit/smoke results, end-to-end Responses API validation, reconnect testing, and remaining production blockers.
-- `PLANNED-FEATURES.md` — long-term capability roadmap covering device management, filesystem and document operations, controlled execution, multi-device workflows, security/privacy controls, risk classes, development phases, and production acceptance requirements.
-- `SECURITY.md` — current security model covering the API boundary, tunnel boundary, broker-to-agent authentication, filesystem restrictions, systemd hardening, secret handling, and production requirements.
+- `.github/SECURITY.md` and `docs/PRIVACY.md` — current security and privacy boundaries.
 - `deploy/systemd/goreecloud-remote-mcp-tunnel.service` — reproducible persistent tunnel service.
 - `deploy/systemd/tunnel.env.example` — safe example of the runtime tunnel credential file.
 
@@ -103,6 +110,9 @@ For installation, tunnel setup, systemd configuration, updates, troubleshooting,
 Read-only tools currently allowed by the OpenAI API CLI:
 
 - `goreecloud.remote.list_devices`
+- `goreecloud.remote.get_health`
+- `goreecloud.remote.get_device_capabilities`
+- `goreecloud.remote.get_device_health`
 - `goreecloud.remote.ping`
 - `goreecloud.remote.list_directory`
 - `goreecloud.remote.read_file`
@@ -127,7 +137,7 @@ Implemented but deliberately excluded from the chat CLI:
 - the chat CLI applies an explicit read-only MCP tool allowlist;
 - the broker does not persist filesystem contents.
 
-See [Security Notes](SECURITY.md) and [Architecture](docs/ARCHITECTURE.md).
+See [Security Notes](.github/SECURITY.md), [Privacy](docs/PRIVACY.md), and [Architecture](docs/ARCHITECTURE.md).
 
 ## Local development
 
@@ -168,11 +178,21 @@ npm run agent
 
 ## Documentation
 
+- [Specifications](docs/SPECIFICATIONS.md)
+- [Features](docs/FEATURES.md)
+- [Implemented Features](docs/IMPLEMENTED-FEATURES.md)
+- [Planned Features and Capabilities](docs/PLANNED-FEATURES.md)
+- [Changelog](docs/CHANGELOGS.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Setup and Operations Guide](docs/SETUP-AND-OPERATIONS.md)
+- [User Manual](docs/USER-MANUAL.md)
 - [Validation Record](docs/VALIDATION.md)
-- [Planned Features and Capabilities](PLANNED-FEATURES.md)
-- [Security Notes](SECURITY.md)
+- [Security Notes](.github/SECURITY.md)
+- [Privacy](docs/PRIVACY.md)
+- [Benefits](docs/BENEFITS.md)
+- [Competitive Objectives](docs/COMPETITIVE-OBJECTIVES.md)
+- [Branding](docs/BRANDING.md)
+- [Notes](docs/NOTES.md)
 - [Example environment](.env.example)
 - [systemd broker service](deploy/systemd/goreecloud-remote-mcp-broker.service)
 - [systemd agent service](deploy/systemd/goreecloud-remote-mcp-agent.service)

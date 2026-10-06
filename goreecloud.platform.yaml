@@ -1,0 +1,185 @@
+schema_version: "2.0"
+
+component:
+  type: service
+  id: goreecloud-remote-mcp
+  product_name: GoreeCloud Remote MCP
+  repository: GoreeCloud/remote-mcp
+
+lifecycle: forge
+lifecycle_metadata:
+  flags: []
+  deployment_state: development
+  qualification_state: not-started
+  next_gate: weave
+  candidate_identity: null
+  last_transition: null
+  evidence:
+    - README.md
+    - docs/SPECIFICATIONS.md
+    - docs/IMPLEMENTED-FEATURES.md
+    - docs/PLANNED-FEATURES.md
+    - docs/CHANGELOGS.md
+version: "0.1.0"
+
+supported_platforms:
+  - linux
+
+api:
+  versions:
+    - mcp-development
+  endpoints:
+    - name: mcp
+      url: http://127.0.0.1:8788/mcp
+      purpose: Development MCP endpoint for approved local and tunneled clients.
+    - name: health
+      url: http://127.0.0.1:8788/healthz
+      purpose: Bounded Development broker health and operational counters.
+
+platform_systems:
+  manager:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - README.md
+      - docs/SPECIFICATIONS.md
+    notes: Accepted GoreeCloud Manager visibility and administrative integration are not established.
+  privacy_shield:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - docs/PRIVACY.md
+      - docs/SPECIFICATIONS.md
+    notes: Privacy-minimized read-only controls exist, but accepted Privacy Shield policy evaluation and runtime integration are not established.
+  wardveil_security:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - .github/SECURITY.md
+      - docs/SPECIFICATIONS.md
+    notes: Security boundaries and fail-closed defaults exist, but accepted Wardveil Security enforcement is not established.
+  everkeep:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - docs/PLANNED-FEATURES.md
+      - docs/SETUP-AND-OPERATIONS.md
+    notes: Recovery requirements are documented, but accepted Everkeep backup and restore integration is not established.
+  glaze_ui:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - docs/BRANDING.md
+    notes: The Development operational dashboard has not completed Glaze V1.7 adoption or application-specific visual and accessibility acceptance.
+  mesh:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - docs/PLANNED-FEATURES.md
+    notes: Multi-device capability direction exists, but accepted GoreeCloud Mesh registration, capability publication, event exchange, and runtime integration are not established.
+    capabilities: []
+    dependencies: []
+    published_events: []
+    consumed_events: []
+  identity:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - .github/SECURITY.md
+      - docs/PLANNED-FEATURES.md
+    notes: The Development path has local and tunnel trust boundaries, but accepted GoreeCloud Identity integration and production identity lifecycle are not established.
+  policy:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - docs/SPECIFICATIONS.md
+      - docs/PLANNED-FEATURES.md
+    notes: Device-side limits and feature flags exist, but accepted GoreeCloud Policy representation, evaluation, distribution, enforcement coordination, explanation, and evidence are not established.
+  observability:
+    result: applicable-blocked
+    version: null
+    evidence:
+      - docs/FEATURES.md
+      - docs/VALIDATION.md
+    notes: Bounded Development health and request counters exist, but accepted GoreeCloud Observability integration, retention, correlation, monitoring, and production evidence are not established.
+
+health:
+  health_endpoint: http://127.0.0.1:8788/healthz
+  readiness_endpoint: null
+
+continuity:
+  backup:
+    required: true
+    requirements:
+      - Define and validate the protected backup scope for repository state and required runtime configuration without copying active credentials into source control.
+  restore:
+    required: true
+    requirements:
+      - Validate clean-target restoration of the broker, agent, tunnel configuration references, service units, and authorized device configuration before production recovery claims.
+  export:
+    required: true
+    requirements:
+      - Keep nonsecret service configuration and authorization policy portable through documented text formats where practical.
+  portability:
+    required: true
+    requirements:
+      - Preserve the MCP-based client-independent protocol boundary and cross-platform configuration model without concealing host-specific security semantics.
+
+external_dependencies:
+  - name: Node.js
+    purpose: Broker, device agent, tests, and OpenAI API CLI runtime.
+    required: true
+    version_constraint: ">=22"
+  - name: "@modelcontextprotocol/sdk"
+    purpose: MCP protocol implementation.
+    required: true
+    version_constraint: "1.32.1"
+  - name: Express
+    purpose: Broker HTTP routing.
+    required: true
+    version_constraint: "5.1.0"
+  - name: ws
+    purpose: Broker-to-agent WebSocket transport.
+    required: true
+    version_constraint: "8.22.0"
+  - name: OpenAI Secure MCP Tunnel client
+    purpose: Optional private remote transport for the currently validated OpenAI API deployment mode.
+    required: false
+    version_constraint: "validated with 0.0.15"
+
+compatibility:
+  platform_contract: "2.0"
+  glaze_ui_required: "1.7.0"
+  requires:
+    - goreecloud-platform-contract==2.0
+    - glaze-ui==1.7.0
+    - node>=22
+  provides:
+    - goreecloud-remote-mcp-readonly-dev-v1
+    - goreecloud-remote-mcp-capability-discovery-dev-v1
+    - goreecloud-remote-mcp-health-diagnostics-dev-v1
+    - goreecloud-remote-mcp-directory-pagination-dev-v1
+
+evidence:
+  acceptance_tests: []
+  release: []
+
+conformance:
+  status: nonconformant
+  validated_at: null
+  evidence:
+    - README.md
+    - docs/SPECIFICATIONS.md
+    - docs/FEATURES.md
+    - docs/IMPLEMENTED-FEATURES.md
+    - docs/VALIDATION.md
+    - .github/SECURITY.md
+    - docs/PRIVACY.md
+    - goreecloud.platform.yaml
+  blockers:
+    - All nine applicable Integral Platform System integrations remain unaccepted.
+    - Glaze V1.7 adoption and application-specific dashboard visual and accessibility acceptance are incomplete.
+    - Privileged write, execution, administrative, and destructive authorization are not accepted.
+    - Production identity, durable audit, monitoring, recovery, rollback, rate limiting, and abuse controls remain incomplete.
+    - Windows and macOS acceptance are not established.
+    - Seal qualification, production acceptance, and Anchor qualification are not established.

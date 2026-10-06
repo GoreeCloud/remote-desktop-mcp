@@ -1,9 +1,10 @@
 # GoreeCloud Remote MCP — Planned Features and Capabilities
 
-**Repository:** GoreeCloud/remote-mcp  
-**Status:** Development  
-**Current baseline:** Private read-only remote-device path validated  
-**Production status:** Not production-approved  
+**Repository:** GoreeCloud/remote-mcp
+**Lifecycle:** Forge
+**Deployment state:** Development
+**Current baseline:** Private read-only remote-device path validated
+**Production status:** Not production-approved
 **Planning record date:** 2026-10-06
 
 > **Status boundary:** This document records the planned direction for GoreeCloud Remote MCP. The current validated foundation is limited to the read-only Development path described in the repository README and validation record. Planned capabilities in this document must not be represented as implemented, accepted, or production-approved until separately verified.
@@ -46,7 +47,10 @@ The existing validated capability baseline includes:
 
 - List connected devices.
 - Verify device connectivity.
-- List approved filesystem directories.
+- Retrieve bounded broker health and operational counters.
+- Retrieve connected-device health and readiness.
+- Retrieve device capability declarations and enforced limits.
+- List approved filesystem directories with deterministically ordered bounded pagination.
 - Read approved files.
 - Search approved filesystem roots.
 - Retrieve file and directory metadata.
@@ -64,6 +68,9 @@ Current prototype tools include:
 
 ~~~text
 goreecloud.remote.list_devices
+goreecloud.remote.get_health
+goreecloud.remote.get_device_capabilities
+goreecloud.remote.get_device_health
 goreecloud.remote.ping
 goreecloud.remote.list_directory
 goreecloud.remote.read_file

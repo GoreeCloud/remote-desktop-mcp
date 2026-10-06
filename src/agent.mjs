@@ -13,6 +13,12 @@ const maxReadBytes = Number(process.env.AGENT_MAX_READ_BYTES ?? "1048576");
 const maxWriteBytes = Number(process.env.AGENT_MAX_WRITE_BYTES ?? "1048576");
 const maxCommandOutputBytes = Number(process.env.AGENT_MAX_COMMAND_OUTPUT_BYTES ?? "1048576");
 const commandTimeoutMs = Number(process.env.AGENT_COMMAND_TIMEOUT_MS ?? "30000");
+const agentVersion = "0.1.0";
+const protocolVersion = "1";
+const startedAt = new Date().toISOString();
+const maxDirectoryPageSize = 1000;
+const maxSearchResults = 200;
+const maxSearchEntries = 10000;
 
 if (!token || token.length < 8) throw new Error("AGENT_DEVICE_TOKEN is required and must be at least 8 characters.");
 
@@ -29,6 +35,64 @@ let allowedRoots = [];
 async function initializeRoots() {
   allowedRoots = await Promise.all(configuredRoots.map(async (root) => await fs.realpath(root)));
 }
+
+function capabilitySummary() {
+  return {
+    protocolVersion,
+    agentVersion,
+    platform: {
+      hostname: os.hostname(),
+      os: os.platform(),
+      arch: os.arch(),
+      node: process.version
+    },
+    filesystem: {
+      read: true,
+      search: true,
+      write: allowWrite,
+      allowedRoots: [...allowedRoots],
+      directoryPagination: true,
+      limits: {
+        maxReadBytes,
+        maxWriteBytes,
+        maxDirectoryPageSize,
+        maxSearchResults,
+        maxSearchEntries
+      }
+    },
+    execution: {
+      shell: allowShell,
+      interactiveSessions: false,
+      processManagement: false,
+      limits: {
+        maxCommandOutputBytes,
+        commandTimeoutMs,
+        maximumCommandTimeoutMs: 120000
+      }
+    }
+  };
+}
+
+function healthSummary() {
+  return {
+    ok: true,
+    status: "ready",
+    deviceId,
+    agentVersion,
+    protocolVersion,
+    startedAt,
+    uptimeSeconds: Math.floor(process.uptime()),
+    time: new Date().toISOString(),
+    allowedRootCount: allowedRoots.length,
+    capabilities: {
+      read: true,
+      search: true,
+      write: allowWrite,
+      shell: allowShell
+    }
+  };
+}
+
 function isInside(candidate, root) { return candidate === root || candidate.startsWith(root + path.sep); }
 
 async function resolveExisting(input) {
@@ -60,15 +124,28 @@ async function readFile(params) {
 
 async function listDirectory(params) {
   const target = await resolveExisting(params.path);
-  const entries = await fs.readdir(target, { withFileTypes: true });
+  const entries = (await fs.readdir(target, { withFileTypes: true }))
+    .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  const offset = Math.max(0, Number(params.offset ?? 0));
+  const limit = Math.min(Math.max(1, Number(params.limit ?? maxDirectoryPageSize)), maxDirectoryPageSize);
+  const page = entries.slice(offset, offset + limit);
   const out = [];
-  for (const entry of entries.slice(0, 1000)) {
+  for (const entry of page) {
     const full = path.join(target, entry.name);
     let size = null;
     try { if (entry.isFile()) size = (await fs.stat(full)).size; } catch {}
     out.push({ name: entry.name, type: entry.isDirectory() ? "directory" : entry.isFile() ? "file" : "other", size });
   }
-  return { path: target, entries: out, truncated: entries.length > out.length };
+  const nextOffset = offset + out.length < entries.length ? offset + out.length : null;
+  return {
+    path: target,
+    offset,
+    limit,
+    totalEntries: entries.length,
+    entries: out,
+    truncated: nextOffset !== null,
+    nextOffset
+  };
 }
 
 async function fileInfo(params) {
@@ -95,18 +172,19 @@ async function searchFiles(params) {
   const root = await resolveExisting(params.root);
   const query = String(params.query ?? "").toLowerCase();
   const mode = params.mode === "content" ? "content" : "name";
-  const maxResults = Math.min(Number(params.maxResults ?? 50), 200);
+  const requestedMaxResults = Number(params.maxResults ?? 50);
+  const resultLimit = Math.min(Math.max(1, requestedMaxResults), maxSearchResults);
   const results = [], queue = [root];
   let scanned = 0;
-  const maxEntries = 10000;
+  const maxEntries = maxSearchEntries;
 
-  while (queue.length && results.length < maxResults && scanned < maxEntries) {
+  while (queue.length && results.length < resultLimit && scanned < maxEntries) {
     const dir = queue.shift();
     let entries;
     try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { continue; }
     for (const entry of entries) {
       scanned += 1;
-      if (scanned >= maxEntries || results.length >= maxResults) break;
+      if (scanned >= maxEntries || results.length >= resultLimit) break;
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         if (!["node_modules", ".git", ".cache"].includes(entry.name)) queue.push(full);
@@ -171,6 +249,8 @@ const actions = new Map([
     ok: true, deviceId, hostname: os.hostname(), platform: os.platform(), arch: os.arch(), time: new Date().toISOString(),
     capabilities: { read: true, search: true, write: allowWrite, shell: allowShell }
   })],
+  ["device.capabilities", async () => capabilitySummary()],
+  ["device.health", async () => healthSummary()],
   ["fs.list", listDirectory], ["fs.read", readFile], ["fs.info", fileInfo], ["fs.write", writeFile],
   ["fs.search", searchFiles], ["process.exec", executeCommand]
 ]);
@@ -185,8 +265,22 @@ async function connect() {
     ws.send(JSON.stringify({
       type: "hello",
       metadata: {
-        hostname: os.hostname(), platform: os.platform(), arch: os.arch(), node: process.version, allowedRoots,
-        capabilities: { read: true, search: true, write: allowWrite, shell: allowShell }
+        hostname: os.hostname(),
+        platform: os.platform(),
+        arch: os.arch(),
+        node: process.version,
+        agentVersion,
+        protocolVersion,
+        allowedRoots,
+        capabilities: {
+          read: true,
+          search: true,
+          write: allowWrite,
+          shell: allowShell,
+          directoryPagination: true,
+          capabilityDiscovery: true,
+          healthReporting: true
+        }
       }
     }));
     console.log(`Agent connected as ${deviceId} to ${url.origin}`);
