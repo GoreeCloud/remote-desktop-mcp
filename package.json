@@ -9,7 +9,8 @@
   "scripts": {
     "broker": "node src/broker.mjs",
     "agent": "node src/agent.mjs",
-    "check": "node --check src/broker.mjs && node --check src/agent.mjs && node --check scripts/smoke.mjs",
+    "chat": "node scripts/chat.mjs",
+    "check": "node --check src/broker.mjs && node --check src/agent.mjs && node --check scripts/smoke.mjs && node --check scripts/chat.mjs",
     "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {

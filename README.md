@@ -87,6 +87,44 @@ http://127.0.0.1:8788/mcp
 
 Creating the tunnel requires a `tunnel_id` and runtime Platform API key.
 
+## OpenAI API chat CLI
+
+When the Secure MCP Tunnel is running, the repository includes a small read-only CLI that sends a prompt to the OpenAI Responses API and lets the model call the approved GoreeCloud Remote MCP tools through the configured tunnel.
+
+The CLI automatically looks for the API key in:
+
+```text
+~/.config/goreecloud-remote-mcp/tunnel.env
+```
+
+and for the tunnel ID in:
+
+```text
+~/.config/tunnel-client/goreecloud-remote-mcp.yaml
+```
+
+Run:
+
+```bash
+npm run chat -- "List the files in my Documents folder"
+```
+
+Choose another available model when needed:
+
+```bash
+npm run chat -- --model gpt-6-astra "Search my home directory for files named privacy"
+```
+
+The CLI allows only the read-only MCP tool set by default:
+
+- device listing and ping
+- directory listing
+- file reading
+- file search
+- file metadata
+
+It does not expose `write_file` or `execute_command`, even if those capabilities are later enabled on the device agent.
+
 ## Local token-auth test
 
 ```bash
