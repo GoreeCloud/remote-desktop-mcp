@@ -1,33 +1,89 @@
 # GoreeCloud Remote MCP
 
-**Status: Development prototype. Not production-approved.**
+**Status: Development prototype. Private read-only path validated. Not production-approved.**
 
-GoreeCloud Remote MCP is a self-hosted Model Context Protocol bridge intended to replace the paid relay portion of services such as Desktop Commander Remote MCP.
+GoreeCloud Remote MCP is a self-hosted Model Context Protocol bridge designed to replace the paid relay portion of remote MCP services while keeping the device-facing agent under GoreeCloud/user control.
 
-It is deliberately separate from the current `GoreeCloud/plugin` Phase 1 implementation. That repository is currently loopback-only and does not yet expose shell or filesystem capabilities.
+It is deliberately separate from the current `GoreeCloud/plugin` foundation. This repository focuses on remote device access; the plugin project remains the broader GoreeCloud conversational integration layer.
 
-## Recommended ChatGPT architecture
+## Current working architecture
 
-For ChatGPT, use **OpenAI Secure MCP Tunnel** rather than exposing this server publicly.
+The validated deployment uses the OpenAI Responses API and OpenAI Secure MCP Tunnel:
 
 ```text
-ChatGPT
-   |
-   | OpenAI Secure MCP Tunnel
-   v
-127.0.0.1:8788/mcp
+npm run chat -- "..."
+        |
+        v
+OpenAI Responses API
+        |
+        | MCP tool call + tunnel_id
+        v
+OpenAI Secure MCP Tunnel
+        ^
+        | outbound HTTPS
+        |
+tunnel-client on laptop
+        |
+        v
+http://127.0.0.1:8788/mcp
 GoreeCloud Remote MCP broker
-   ^
-   | loopback WebSocket + device token
-   |
+        ^
+        | authenticated local WebSocket
+        |
 Local device agent
+        |
+        v
+Approved local filesystem roots
 ```
 
-Run the broker with `MCP_AUTH_MODE=none` only when `BROKER_HOST` is loopback. The broker enforces that restriction. The tunnel becomes the remote transport boundary.
+The broker is not exposed directly to the public Internet in this mode.
 
-ChatGPT custom MCP apps do not use arbitrary customer-provided static API keys as their normal authentication mechanism. For a public ChatGPT MCP endpoint, implement OAuth 2.1. For a private local MCP endpoint, use Secure MCP Tunnel and no MCP-layer authentication on loopback.
+## Working status
+
+The current implementation has been validated end-to-end for read-only access:
+
+- broker and agent run as persistent systemd user services;
+- OpenAI `tunnel-client` runs as a persistent systemd user service;
+- the tunnel reports `live` and `ready`;
+- the broker sees the connected device;
+- the Responses API can discover and call the MCP tools through the tunnel;
+- `npm run chat` can list directories, read files, search files, inspect metadata, ping the agent, and list devices;
+- file writes and shell execution remain disabled.
+
+See [Validation Record](docs/VALIDATION.md) for the recorded checks.
+
+## Quick use
+
+After the one-time setup is complete:
+
+```bash
+npm run chat -- "List the files in my Documents folder"
+```
+
+Read a text file:
+
+```bash
+npm run chat -- "Read ~/Documents/example.md and summarize it"
+```
+
+Search:
+
+```bash
+npm run chat -- "Search my home directory for files containing Wardveil"
+```
+
+Use another available model:
+
+```bash
+npm run chat -- --model gpt-6-astra \
+  "Search my home directory for files named privacy"
+```
+
+For installation, tunnel setup, systemd configuration, updates, troubleshooting, key rotation, and removal, see [Setup and Operations Guide](docs/SETUP-AND-OPERATIONS.md).
 
 ## Prototype tools
+
+Read-only tools currently allowed by the OpenAI API CLI:
 
 - `goreecloud.remote.list_devices`
 - `goreecloud.remote.ping`
@@ -35,23 +91,28 @@ ChatGPT custom MCP apps do not use arbitrary customer-provided static API keys a
 - `goreecloud.remote.read_file`
 - `goreecloud.remote.search_files`
 - `goreecloud.remote.get_file_info`
-- `goreecloud.remote.write_file` (agent opt-in)
-- `goreecloud.remote.execute_command` (agent opt-in)
+
+Implemented but deliberately excluded from the chat CLI:
+
+- `goreecloud.remote.write_file` — agent opt-in
+- `goreecloud.remote.execute_command` — agent opt-in
 
 ## Security defaults
 
-- MCP endpoint defaults to bearer-token mode.
-- No-auth MCP mode is accepted only on loopback.
-- Agent WebSocket requires a separate device token.
-- File access is restricted to configured roots.
-- File mutation is disabled unless `AGENT_ALLOW_WRITE=true`.
-- Shell execution is disabled unless `AGENT_ALLOW_SHELL=true`.
-- Request/output sizes and RPC durations are bounded.
-- The broker does not persist filesystem contents.
+- broker binds to loopback by default;
+- no-auth MCP mode is accepted only on loopback;
+- agent WebSocket uses a separate device token;
+- filesystem access is restricted to configured roots;
+- write access defaults to disabled;
+- shell execution defaults to disabled;
+- request, output, read, write, and command durations are bounded;
+- runtime secrets are stored outside the repository;
+- the chat CLI applies an explicit read-only MCP tool allowlist;
+- the broker does not persist filesystem contents.
 
-This is a prototype, not a production-security claim. Before public deployment, add accepted GoreeCloud Identity/Wardveil/Privacy Shield integration, durable audit logging, rate limits, credential rotation/revocation, monitoring, recovery, and rollback.
+See [Security Notes](SECURITY.md) and [Architecture](docs/ARCHITECTURE.md).
 
-## ChatGPT tunnel mode
+## Local development
 
 Install dependencies:
 
@@ -59,73 +120,15 @@ Install dependencies:
 npm install --ignore-scripts
 ```
 
-Start the broker:
+Run syntax checks and local smoke validation:
 
 ```bash
-MCP_AUTH_MODE=none \
-BROKER_DEVICE_TOKEN=dev-device-token-123 \
-BROKER_HOST=127.0.0.1 \
-BROKER_PORT=8788 \
-npm run broker
+npm run check
+npm audit --audit-level=high
+npm run smoke
 ```
 
-Start the local agent in another terminal:
-
-```bash
-BROKER_WS_URL=ws://127.0.0.1:8788/agent \
-AGENT_DEVICE_TOKEN=dev-device-token-123 \
-DEVICE_ID=personal-laptop \
-AGENT_ALLOWED_ROOTS="$HOME" \
-npm run agent
-```
-
-Configure OpenAI `tunnel-client` to forward to:
-
-```text
-http://127.0.0.1:8788/mcp
-```
-
-Creating the tunnel requires a `tunnel_id` and runtime Platform API key.
-
-## OpenAI API chat CLI
-
-When the Secure MCP Tunnel is running, the repository includes a small read-only CLI that sends a prompt to the OpenAI Responses API and lets the model call the approved GoreeCloud Remote MCP tools through the configured tunnel.
-
-The CLI automatically looks for the API key in:
-
-```text
-~/.config/goreecloud-remote-mcp/tunnel.env
-```
-
-and for the tunnel ID in:
-
-```text
-~/.config/tunnel-client/goreecloud-remote-mcp.yaml
-```
-
-Run:
-
-```bash
-npm run chat -- "List the files in my Documents folder"
-```
-
-Choose another available model when needed:
-
-```bash
-npm run chat -- --model gpt-6-astra "Search my home directory for files named privacy"
-```
-
-The CLI allows only the read-only MCP tool set by default:
-
-- device listing and ping
-- directory listing
-- file reading
-- file search
-- file metadata
-
-It does not expose `write_file` or `execute_command`, even if those capabilities are later enabled on the device agent.
-
-## Local token-auth test
+For local bearer-token testing without the OpenAI tunnel:
 
 ```bash
 MCP_AUTH_MODE=token \
@@ -136,19 +139,36 @@ BROKER_PORT=8788 \
 npm run broker
 ```
 
-Automated smoke test:
+Start an agent in another terminal:
 
 ```bash
-npm run check
-npm run smoke
+BROKER_WS_URL=ws://127.0.0.1:8788/agent \
+AGENT_DEVICE_TOKEN=dev-device-token-123 \
+DEVICE_ID=personal-laptop \
+AGENT_ALLOWED_ROOTS="$HOME" \
+npm run agent
 ```
 
-## Optional public deployment
+## Documentation
 
-For non-ChatGPT clients that require a public endpoint, terminate TLS at a trusted reverse proxy and add standards-compliant authentication and authorization before exposing the broker. Keep device-agent connections outbound-only.
-
-Do not expose this Development prototype publicly until authentication/authorization, abuse-control, audit, recovery, monitoring, and rollback gates are accepted.
+- [Architecture](docs/ARCHITECTURE.md)
+- [Setup and Operations Guide](docs/SETUP-AND-OPERATIONS.md)
+- [Validation Record](docs/VALIDATION.md)
+- [Security Notes](SECURITY.md)
+- [Example environment](.env.example)
+- [systemd broker service](deploy/systemd/goreecloud-remote-mcp-broker.service)
+- [systemd agent service](deploy/systemd/goreecloud-remote-mcp-agent.service)
+- [systemd tunnel service](deploy/systemd/goreecloud-remote-mcp-tunnel.service)
+- [tunnel environment example](deploy/systemd/tunnel.env.example)
 
 ## Cost model
 
-The code has no metered relay service and no built-in monthly tool-call quota. Remaining costs and limits depend on whatever infrastructure/networking you choose and on the MCP client's own plan, API, or tunnel requirements.
+The GoreeCloud code has no built-in monthly relay subscription and no metered MCP-tool-call quota.
+
+External services can still have their own costs and limits. In the current deployment, OpenAI API usage is billed separately according to the selected API model and account, and the CLI prints total tokens after each completed request.
+
+## Production status
+
+This repository is a Development prototype.
+
+Before public deployment or privileged operations, separately design and accept identity/authorization, Wardveil Security controls, Privacy Shield evaluation, durable audit, rate limiting, credential rotation/revocation, monitoring, recovery, rollback, controlled writes, command authorization, and destructive-action confirmation.
