@@ -67,8 +67,30 @@ function requireAdmin(req, res, next) {
 
 function deviceSummary() {
   return [...devices.entries()].map(([id, value]) => ({
-    id, connectedAt: value.connectedAt, lastSeen: value.lastSeen, metadata: value.metadata ?? {}
+    id,
+    status: "online",
+    connectedAt: value.connectedAt,
+    lastSeen: value.lastSeen,
+    metadata: value.metadata ?? {}
   }));
+}
+
+function brokerHealth() {
+  return {
+    ok: true,
+    status: "ready",
+    service: "goreecloud-remote-mcp",
+    version: "0.1.0",
+    startedAt: stats.startedAt,
+    uptimeSeconds: Math.floor(process.uptime()),
+    mcpAuthMode,
+    connectedDevices: devices.size,
+    stats: {
+      mcpRequests: stats.mcpRequests,
+      agentRequests: stats.agentRequests,
+      agentErrors: stats.agentErrors
+    }
+  };
 }
 
 async function rpc(deviceId, action, params = {}) {
@@ -104,15 +126,36 @@ function createMcpServer() {
     inputSchema: {}
   }, async () => textResult({ devices: deviceSummary() }));
 
+  server.registerTool("goreecloud.remote.get_health", {
+    description: "Get bounded broker health and operational counters without exposing credentials or file contents.",
+    inputSchema: {}
+  }, async () => textResult(brokerHealth()));
+
+  server.registerTool("goreecloud.remote.get_device_capabilities", {
+    description: "Get the enabled capability set and enforced limits reported by one connected device agent.",
+    inputSchema: { deviceId: z.string().min(1) }
+  }, async ({ deviceId }) => textResult(await rpc(deviceId, "device.capabilities")));
+
+  server.registerTool("goreecloud.remote.get_device_health", {
+    description: "Get bounded health and readiness information from one connected device agent.",
+    inputSchema: { deviceId: z.string().min(1) }
+  }, async ({ deviceId }) => textResult(await rpc(deviceId, "device.health")));
+
   server.registerTool("goreecloud.remote.ping", {
     description: "Ping one connected device agent.",
     inputSchema: { deviceId: z.string().min(1) }
   }, async ({ deviceId }) => textResult(await rpc(deviceId, "ping")));
 
   server.registerTool("goreecloud.remote.list_directory", {
-    description: "List a directory on a connected device within the agent's allowed roots.",
-    inputSchema: { deviceId: z.string().min(1), path: z.string().min(1) }
-  }, async ({ deviceId, path: targetPath }) => textResult(await rpc(deviceId, "fs.list", { path: targetPath })));
+    description: "List a bounded, deterministically ordered page of a directory within the agent's allowed roots.",
+    inputSchema: {
+      deviceId: z.string().min(1),
+      path: z.string().min(1),
+      offset: z.number().int().nonnegative().optional(),
+      limit: z.number().int().positive().max(1000).optional()
+    }
+  }, async ({ deviceId, path: targetPath, offset, limit }) =>
+    textResult(await rpc(deviceId, "fs.list", { path: targetPath, offset, limit })));
 
   server.registerTool("goreecloud.remote.read_file", {
     description: "Read a UTF-8 text file within the agent's allowed roots.",
@@ -160,9 +203,7 @@ function createMcpServer() {
   return server;
 }
 
-app.get("/healthz", (_req, res) => res.json({
-  ok: true, service: "goreecloud-remote-mcp", version: "0.1.0", mcpAuthMode, connectedDevices: devices.size
-}));
+app.get("/healthz", (_req, res) => res.json(brokerHealth()));
 
 app.get("/api/status", requireAdmin, (_req, res) => res.json({ stats, devices: deviceSummary() }));
 

@@ -69,29 +69,50 @@ function requireTrue(condition, label, value) {
 try {
   const health = await waitForHealth();
   const list = await waitForDevice();
-  const ping = await callTool("goreecloud.remote.ping", { deviceId: "smoke-device" }, 100);
-  const dir = await callTool("goreecloud.remote.list_directory", {
-    deviceId: "smoke-device", path: process.cwd()
+  const brokerHealth = await callTool("goreecloud.remote.get_health", {}, 100);
+  const capabilities = await callTool("goreecloud.remote.get_device_capabilities", {
+    deviceId: "smoke-device"
   }, 101);
+  const deviceHealth = await callTool("goreecloud.remote.get_device_health", {
+    deviceId: "smoke-device"
+  }, 102);
+  const ping = await callTool("goreecloud.remote.ping", { deviceId: "smoke-device" }, 103);
+  const dir = await callTool("goreecloud.remote.list_directory", {
+    deviceId: "smoke-device", path: process.cwd(), offset: 0, limit: 1
+  }, 104);
+  const dirNext = await callTool("goreecloud.remote.list_directory", {
+    deviceId: "smoke-device", path: process.cwd(), offset: 1, limit: 1
+  }, 105);
   const read = await callTool("goreecloud.remote.read_file", {
     deviceId: "smoke-device", path: process.cwd() + "/package.json", offset: 0, length: 20
-  }, 102);
+  }, 106);
   const deniedWrite = await callTool("goreecloud.remote.write_file", {
     deviceId: "smoke-device", path: process.cwd() + "/smoke-write.txt", content: "should-not-write"
-  }, 103);
+  }, 107);
   const deniedShell = await callTool("goreecloud.remote.execute_command", {
     deviceId: "smoke-device", command: "pwd", cwd: process.cwd()
-  }, 104);
+  }, 108);
+
+  const firstPage = dir.result?.structuredContent;
+  const secondPage = dirNext.result?.structuredContent;
 
   requireTrue(JSON.stringify(list).includes("smoke-device"), "list_devices", list);
+  requireTrue(brokerHealth.result?.structuredContent?.connectedDevices === 1, "broker health", brokerHealth);
+  requireTrue(capabilities.result?.structuredContent?.filesystem?.write === false, "capability write state", capabilities);
+  requireTrue(capabilities.result?.structuredContent?.filesystem?.directoryPagination === true, "directory pagination capability", capabilities);
+  requireTrue(deviceHealth.result?.structuredContent?.status === "ready", "device health", deviceHealth);
   requireTrue(ping.result?.structuredContent?.ok === true, "ping", ping);
-  requireTrue(JSON.stringify(dir).includes("package.json"), "list_directory", dir);
+  requireTrue(firstPage?.entries?.length === 1, "list_directory first page", dir);
+  requireTrue(firstPage?.totalEntries >= 2, "list_directory total entries", dir);
+  requireTrue(firstPage?.nextOffset === 1, "list_directory next offset", dir);
+  requireTrue(secondPage?.entries?.length === 1, "list_directory second page", dirNext);
+  requireTrue(firstPage?.entries?.[0]?.name !== secondPage?.entries?.[0]?.name, "list_directory stable pagination", { dir, dirNext });
   requireTrue(JSON.stringify(read).includes("goreecloud-remote-mcp"), "read_file", read);
   requireTrue(JSON.stringify(deniedWrite).includes("File writes are disabled"), "write denial", deniedWrite);
   requireTrue(JSON.stringify(deniedShell).includes("Shell execution is disabled"), "shell denial", deniedShell);
 
   console.log("health:", JSON.stringify(health));
-  console.log("SMOKE PASS: connectivity, read tools, and fail-closed mutation controls");
+  console.log("SMOKE PASS: capability discovery, health diagnostics, directory pagination, read tools, and fail-closed mutation controls");
 } finally {
   stop();
 }

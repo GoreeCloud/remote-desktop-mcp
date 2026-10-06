@@ -6,6 +6,9 @@ import path from "node:path";
 
 const READ_ONLY_TOOLS = [
   "goreecloud.remote.list_devices",
+  "goreecloud.remote.get_health",
+  "goreecloud.remote.get_device_capabilities",
+  "goreecloud.remote.get_device_health",
   "goreecloud.remote.ping",
   "goreecloud.remote.list_directory",
   "goreecloud.remote.read_file",
