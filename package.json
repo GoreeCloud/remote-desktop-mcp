@@ -1,0 +1,21 @@
+{
+  "name": "goreecloud-remote-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "description": "Self-hosted remote MCP broker and device agent prototype for GoreeCloud.",
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "broker": "node src/broker.mjs",
+    "agent": "node src/agent.mjs",
+    "check": "node --check src/broker.mjs && node --check src/agent.mjs && node --check scripts/smoke.mjs",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "express": "5.1.0",
+    "ws": "8.22.0",
+    "zod": "3.25.76"
+  }
+}

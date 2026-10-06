@@ -1,0 +1,20 @@
+[Unit]
+Description=GoreeCloud Remote MCP Device Agent
+After=network-online.target goreecloud-remote-mcp-broker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/GoreeCloud-work/goreecloud-remote-mcp/scripts/run-agent.sh
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=%h
+ReadWritePaths=%h/.config/goreecloud-remote-mcp
+LockPersonality=yes
+
+[Install]
+WantedBy=default.target

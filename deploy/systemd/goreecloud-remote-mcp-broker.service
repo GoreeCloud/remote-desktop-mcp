@@ -1,0 +1,19 @@
+[Unit]
+Description=GoreeCloud Remote MCP Broker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/GoreeCloud-work/goreecloud-remote-mcp/scripts/run-broker.sh
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.config/goreecloud-remote-mcp
+LockPersonality=yes
+
+[Install]
+WantedBy=default.target
