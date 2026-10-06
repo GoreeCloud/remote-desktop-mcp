@@ -45,6 +45,7 @@ The agent is constrained by:
 - shell capability flag;
 - read/write/output size limits;
 - command timeout;
+- exact-connection RPC reply matching, including same-ID agent replacement isolation;
 - systemd sandboxing.
 
 ## Defense in depth for the current CLI

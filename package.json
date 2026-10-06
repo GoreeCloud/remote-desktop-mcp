@@ -10,8 +10,9 @@
     "broker": "node src/broker.mjs",
     "agent": "node src/agent.mjs",
     "chat": "node scripts/chat.mjs",
-    "check": "node --check src/broker.mjs && node --check src/agent.mjs && node --check scripts/smoke.mjs && node --check scripts/chat.mjs",
-    "smoke": "node scripts/smoke.mjs"
+    "check": "node --check src/broker.mjs && node --check src/agent.mjs && node --check scripts/smoke.mjs && node --check scripts/security-smoke.mjs && node --check scripts/chat.mjs",
+    "smoke": "node scripts/smoke.mjs && node scripts/security-smoke.mjs",
+    "security-smoke": "node scripts/security-smoke.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
