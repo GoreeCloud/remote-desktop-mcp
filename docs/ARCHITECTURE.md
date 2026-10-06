@@ -59,8 +59,9 @@ src/broker.mjs
 Responsibilities:
 
 - exposes the Streamable HTTP MCP endpoint at `/mcp`;
-- exposes `/healthz`;
+- exposes bounded broker health through `/healthz` and the read-only MCP health tool;
 - maintains the connected-device registry;
+- exposes device capability and health discovery through authenticated agent RPC;
 - forwards approved device RPC calls to the agent;
 - enforces MCP authentication mode;
 - refuses unauthenticated MCP mode when bound to a non-loopback address.
@@ -90,6 +91,8 @@ Responsibilities:
 - resolves and validates filesystem paths;
 - constrains access to configured roots;
 - performs read operations;
+- provides bounded health and capability declarations;
+- provides deterministically ordered bounded directory pagination;
 - exposes optional write and shell capabilities only when explicitly enabled.
 
 Current deployment:
@@ -135,6 +138,9 @@ The CLI calls the OpenAI Responses API and supplies the configured Secure MCP Tu
 The CLI has its own allowlist and currently exposes only:
 
 - `goreecloud.remote.list_devices`
+- `goreecloud.remote.get_health`
+- `goreecloud.remote.get_device_capabilities`
+- `goreecloud.remote.get_device_health`
 - `goreecloud.remote.ping`
 - `goreecloud.remote.list_directory`
 - `goreecloud.remote.read_file`

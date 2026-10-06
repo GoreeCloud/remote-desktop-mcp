@@ -1,7 +1,9 @@
 # Validation Record
 
 **Project:** GoreeCloud Remote MCP
-**Status:** Development prototype
+**Lifecycle:** Forge
+**Deployment state:** Development
+**Production status:** Not production-approved
 **Validation date:** 2026-10-06 local deployment time
 
 ## Environment
@@ -45,17 +47,23 @@ goreecloud-remote-mcp-agent
 goreecloud-remote-mcp-tunnel
 ```
 
-Broker health returned:
+Broker health returned the bounded Development health model:
 
 ```json
 {
   "ok": true,
+  "status": "ready",
   "service": "goreecloud-remote-mcp",
   "version": "0.1.0",
   "mcpAuthMode": "none",
-  "connectedDevices": 1
+  "connectedDevices": 1,
+  "stats": {
+    "agentErrors": 0
+  }
 }
 ```
+
+The live endpoint also reported bounded start-time, uptime, MCP-request, and agent-request counters. Those changing values are intentionally omitted from this retained example.
 
 Tunnel health returned:
 
@@ -164,6 +172,52 @@ ws 8.22.0
 ```
 
 The final validation audit then reported zero known vulnerabilities at the selected audit threshold.
+
+## Read-only maturity candidate validation
+
+The exact source commit validated for this Development capability increment was:
+
+```text
+6ab64325aef986ec2343428c694f74745080c39c
+```
+
+That source commit was run on the authorized Linux x64 Development laptop through the existing systemd broker, device-agent, and Secure MCP Tunnel services.
+
+Direct live MCP checks verified:
+
+- `goreecloud.remote.get_health` returned broker status `ready` with one connected device.
+- `goreecloud.remote.get_device_capabilities` reported protocol version 1 and agent version 0.1.0.
+- Device capabilities reported read and search enabled.
+- Device capabilities reported write disabled and shell disabled.
+- Device capabilities reported interactive sessions and process management disabled.
+- Directory pagination was reported enabled with a maximum page size of 1000.
+- Read-size, write-size, search-result, search-entry, command-output, and command-time limits were returned as bounded policy information.
+- `goreecloud.remote.get_device_health` returned device status `ready`.
+- Two consecutive one-entry directory pages returned offsets 0 and 1, distinct deterministically ordered entries, and advancing `nextOffset` values.
+- No private directory entry names are retained in this public validation record.
+
+The OpenAI Responses API CLI was then exercised through the live Secure MCP Tunnel with the expanded read-only allowlist. The end-to-end response reported:
+
+```text
+Broker status: ready
+Device status: online
+Write enabled: false
+Shell enabled: false
+Directory pagination enabled: true
+```
+
+This confirms the new read-only maturity tools through the complete Development path:
+
+```text
+CLI
+ -> OpenAI Responses API
+ -> Secure MCP Tunnel
+ -> tunnel-client
+ -> local MCP broker
+ -> authenticated device agent
+```
+
+The subsequent documentation and repository-governance reconciliation does not alter the validated source implementation. The final pull-request head still requires its own repository validation before merge.
 
 ## Fail-closed controls validated
 

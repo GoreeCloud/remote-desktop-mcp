@@ -1,0 +1,21 @@
+name: Platform conformance
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "fix/**"
+      - "security/**"
+      - "docs/**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  platform-contract:
+    uses: GoreeCloud/GoreeCloud/.github/workflows/reusable-platform-manifest.yml@dc456cd62c275bd9dca5a7409f36477720f450f0
+    with:
+      manifest-path: goreecloud.platform.yaml
