@@ -1,7 +1,13 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs/promises";
+import path from "node:path";
 import process from "node:process";
 
 const cwd = new URL("../", import.meta.url);
+const fixtureDir = await fs.mkdtemp(path.join(process.cwd(), ".remote-mcp-smoke-"));
+const largeFilePath = path.join(fixtureDir, "large.txt");
+const largeContents = Buffer.concat([Buffer.from("large-file-test:"), Buffer.alloc(1048576, 0x61), Buffer.from("Ω")]);
+await fs.writeFile(largeFilePath, largeContents);
 const env = {
   ...process.env,
   BROKER_HOST: "127.0.0.1",
@@ -95,6 +101,35 @@ try {
   const read = await callTool("goreecloud.remote.read_file", {
     deviceId: "smoke-device", path: process.cwd() + "/package.json", offset: 0, length: 20
   }, 109);
+  const ordinaryLargeRead = await callTool("goreecloud.remote.read_file", {
+    deviceId: "smoke-device", path: largeFilePath
+  }, 112);
+  const chunkStart = await callTool("goreecloud.remote.read_file_chunk", {
+    deviceId: "smoke-device", path: largeFilePath, offset: 0, length: 16
+  }, 113);
+  const chunkNext = await callTool("goreecloud.remote.read_file_chunk", {
+    deviceId: "smoke-device", path: largeFilePath, offset: 16, length: 64
+  }, 114);
+  const chunkTail = await callTool("goreecloud.remote.read_file_chunk", {
+    deviceId: "smoke-device", path: largeFilePath, offset: largeContents.length - 2, length: 20
+  }, 115);
+  const chunkEmpty = await callTool("goreecloud.remote.read_file_chunk", {
+    deviceId: "smoke-device", path: largeFilePath, offset: largeContents.length
+  }, 116);
+  const deniedChunkLimit = await callTool("goreecloud.remote.read_file_chunk", {
+    deviceId: "smoke-device", path: largeFilePath, length: 65537
+  }, 117);
+  const deniedChunkRoot = await callTool("goreecloud.remote.read_file_chunk", {
+    deviceId: "smoke-device", path: process.cwd() + "/.."
+  }, 118);
+  const nameSearch = await callTool("goreecloud.remote.search_files", {
+    deviceId: "smoke-device", root: process.cwd(), query: "PACKAGE.JSON",
+    mode: "name", maxResults: 1
+  }, 119);
+  const caseSearch = await callTool("goreecloud.remote.search_files", {
+    deviceId: "smoke-device", root: process.cwd(), query: "PACKAGE.JSON",
+    mode: "name", caseSensitive: true, maxResults: 10
+  }, 120);
   const deniedWrite = await callTool("goreecloud.remote.write_file", {
     deviceId: "smoke-device", path: process.cwd() + "/smoke-write.txt", content: "should-not-write"
   }, 110);
@@ -121,11 +156,32 @@ try {
   requireTrue(JSON.stringify(deniedOutsideRoot).includes("outside configured allowed roots"), "allowed-root confinement", deniedOutsideRoot);
   requireTrue(JSON.stringify(rejectedPageLimit).includes("Number must be less than or equal to 1000"), "oversized directory-page denial", rejectedPageLimit);
   requireTrue(JSON.stringify(read).includes("goreecloud-remote-mcp"), "read_file", read);
+  requireTrue(JSON.stringify(ordinaryLargeRead).includes("File exceeds AGENT_MAX_READ_BYTES"), "ordinary size ceiling", ordinaryLargeRead);
+  const start = chunkStart.result?.structuredContent;
+  const next = chunkNext.result?.structuredContent;
+  const tail = chunkTail.result?.structuredContent;
+  const empty = chunkEmpty.result?.structuredContent;
+  requireTrue(start?.encoding === "base64" && start?.byteLength === 16, "bounded chunk", chunkStart);
+  requireTrue(Buffer.from(start.content, "base64").equals(largeContents.subarray(0, 16)), "chunk byte fidelity", chunkStart);
+  requireTrue(start?.nextOffset === 16 && !start?.eof, "chunk continuation", chunkStart);
+  requireTrue(next?.offset === 16 && next?.nextOffset === 80, "chunk second page", chunkNext);
+  requireTrue(Buffer.from(next.content, "base64").equals(largeContents.subarray(16, 80)), "chunk second page fidelity", chunkNext);
+  requireTrue(tail?.byteLength === 2 && tail?.eof === true && tail?.nextOffset === null, "chunk final page", chunkTail);
+  requireTrue(Buffer.from(tail.content, "base64").equals(largeContents.subarray(-2)), "chunk Unicode bytes", chunkTail);
+  requireTrue(empty?.byteLength === 0 && empty?.eof === true, "chunk empty EOF", chunkEmpty);
+  requireTrue(JSON.stringify(deniedChunkLimit).includes("Number must be less than or equal to 65536"), "chunk limit rejection", deniedChunkLimit);
+  requireTrue(JSON.stringify(deniedChunkRoot).includes("outside configured allowed roots"), "chunk root rejection", deniedChunkRoot);
+  const searched = nameSearch.result?.structuredContent;
+  const cased = caseSearch.result?.structuredContent;
+  requireTrue(searched?.results?.length === 1 && searched?.truncationReason === "result_limit", "bounded search result", nameSearch);
+  requireTrue(searched?.caseSensitive === false && searched?.searchTimeoutMs > 0, "search parameters", nameSearch);
+  requireTrue(cased?.results?.length === 0 && cased?.caseSensitive === true && cased?.truncated === false, "case-sensitive search", caseSearch);
   requireTrue(JSON.stringify(deniedWrite).includes("File writes are disabled"), "write denial", deniedWrite);
   requireTrue(JSON.stringify(deniedShell).includes("Shell execution is disabled"), "shell denial", deniedShell);
 
   console.log("health:", JSON.stringify(health));
-  console.log("SMOKE PASS: discovery, diagnostics, bounded pagination, allowed-root denials, read tools, and fail-closed mutation controls");
+  console.log("SMOKE PASS: diagnostics, byte-range large-file reads, bounded searches, pagination, root confinement, and fail-closed mutation controls");
 } finally {
   stop();
+  await fs.rm(fixtureDir, { recursive: true, force: true });
 }

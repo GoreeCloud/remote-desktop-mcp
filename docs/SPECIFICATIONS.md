@@ -18,6 +18,8 @@ GoreeCloud Remote MCP provides a GoreeCloud-controlled MCP broker and authentica
 - Filesystem access is restricted to resolved paths under configured allowed roots.
 - Read-only client access exposes device discovery, health, capability discovery, directory listing, text reads, search, and file metadata.
 - Directory listing supports bounded deterministic pagination.
+- Approved large-file byte reads are limited to 65,536 base64-encoded bytes per call with continuation and EOF metadata; ordinary text reads retain their file-size ceiling.
+- Search uses deterministic traversal and result/scan limits with a cooperative configurable deadline, which cannot interrupt in-progress filesystem I/O.
 - Filesystem writes and shell execution remain disabled by default and are excluded from the OpenAI API CLI allowlist.
 - Requests, file reads/writes, search results, command output, and command duration remain bounded.
 - Runtime credentials remain outside source control.
@@ -33,6 +35,7 @@ goreecloud.remote.get_device_health
 goreecloud.remote.ping
 goreecloud.remote.list_directory
 goreecloud.remote.read_file
+goreecloud.remote.read_file_chunk
 goreecloud.remote.search_files
 goreecloud.remote.get_file_info
 ```

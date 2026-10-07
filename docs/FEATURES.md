@@ -18,9 +18,10 @@
 
 - Allowed-root path enforcement using resolved paths.
 - Stable bounded directory pagination with offset, limit, total count, and next offset.
-- UTF-8 text reads with bounded line ranges.
+- UTF-8 text reads with bounded line ranges and an ordinary per-file size ceiling.
+- Base64 byte-range reads with a 65,536-byte per-call maximum, continuation offsets, and EOF markers.
 - File and directory metadata.
-- Bounded filename and content search.
+- Deterministically ordered filename and content search with optional case-sensitive matching and explicit cooperative time, scan, and result limits.
 - Read/write separation at the agent capability boundary.
 
 ## Security and Operations

@@ -19,6 +19,11 @@ const startedAt = new Date().toISOString();
 const maxDirectoryPageSize = 1000;
 const maxSearchResults = 200;
 const maxSearchEntries = 10000;
+const maxChunkReadBytes = Math.min(maxReadBytes, 65536);
+const searchTimeoutMs = Number(process.env.AGENT_SEARCH_TIMEOUT_MS ?? "5000");
+if (!Number.isSafeInteger(searchTimeoutMs) || searchTimeoutMs < 1 || searchTimeoutMs > 30000) {
+  throw new Error("AGENT_SEARCH_TIMEOUT_MS must be an integer from 1 to 30000.");
+}
 
 if (!token || token.length < 8) throw new Error("AGENT_DEVICE_TOKEN is required and must be at least 8 characters.");
 
@@ -52,12 +57,15 @@ function capabilitySummary() {
       write: allowWrite,
       allowedRoots: [...allowedRoots],
       directoryPagination: true,
+      byteRangeReading: true,
       limits: {
         maxReadBytes,
+        maxChunkReadBytes,
         maxWriteBytes,
         maxDirectoryPageSize,
         maxSearchResults,
-        maxSearchEntries
+        maxSearchEntries,
+        searchTimeoutMs
       }
     },
     execution: {
@@ -122,6 +130,34 @@ async function readFile(params) {
   return { path: target, offset, length, totalLines: lines.length, content: lines.slice(offset, offset + length).join("\n") };
 }
 
+async function readFileChunk(params) {
+  const target = await resolveExisting(params.path);
+  const offset = params.offset ?? 0;
+  const length = params.length ?? Math.min(16384, maxChunkReadBytes);
+  if (!Number.isSafeInteger(offset) || offset < 0) throw new Error("Chunk offset must be a nonnegative safe integer.");
+  if (!Number.isSafeInteger(length) || length < 1 || length > maxChunkReadBytes) {
+    throw new Error(`Chunk length must be between 1 and ${maxChunkReadBytes} bytes.`);
+  }
+  const handle = await fs.open(target, "r");
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile()) throw new Error("Target is not a regular file.");
+    if (!Number.isSafeInteger(stat.size)) throw new Error("File size cannot be safely represented.");
+    const capacity = Math.min(length, Math.max(0, stat.size - offset));
+    const buffer = Buffer.alloc(capacity);
+    const { bytesRead } = await handle.read(buffer, 0, capacity, offset);
+    const nextOffset = offset + bytesRead < stat.size ? offset + bytesRead : null;
+    return {
+      path: target, encoding: "base64", offset,
+      byteLength: bytesRead, fileSize: stat.size,
+      content: buffer.subarray(0, bytesRead).toString("base64"),
+      nextOffset, eof: nextOffset === null
+    };
+  } finally {
+    await handle.close();
+  }
+}
+
 async function listDirectory(params) {
   const target = await resolveExisting(params.path);
   const entries = (await fs.readdir(target, { withFileTypes: true }))
@@ -170,21 +206,30 @@ async function writeFile(params) {
 
 async function searchFiles(params) {
   const root = await resolveExisting(params.root);
-  const query = String(params.query ?? "").toLowerCase();
+  if (!(await fs.stat(root)).isDirectory()) throw new Error("Search root must be a directory.");
+  const caseSensitive = params.caseSensitive === true;
+  const query = caseSensitive ? String(params.query ?? "") : String(params.query ?? "").toLowerCase();
   const mode = params.mode === "content" ? "content" : "name";
-  const requestedMaxResults = Number(params.maxResults ?? 50);
-  const resultLimit = Math.min(Math.max(1, requestedMaxResults), maxSearchResults);
+  const resultLimit = Math.min(Math.max(1, Number(params.maxResults ?? 50)), maxSearchResults);
   const results = [], queue = [root];
+  const startedAt = Date.now();
   let scanned = 0;
-  const maxEntries = maxSearchEntries;
+  let truncationReason = null;
 
-  while (queue.length && results.length < resultLimit && scanned < maxEntries) {
+  while (queue.length && !truncationReason) {
+    if (Date.now() - startedAt >= searchTimeoutMs) { truncationReason = "time_limit"; break; }
+    if (scanned >= maxSearchEntries) { truncationReason = "scan_limit"; break; }
     const dir = queue.shift();
     let entries;
-    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { continue; }
+    try {
+      entries = (await fs.readdir(dir, { withFileTypes: true }))
+        .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    } catch { continue; }
     for (const entry of entries) {
+      if (Date.now() - startedAt >= searchTimeoutMs) { truncationReason = "time_limit"; break; }
+      if (scanned >= maxSearchEntries) { truncationReason = "scan_limit"; break; }
+      if (results.length >= resultLimit) { truncationReason = "result_limit"; break; }
       scanned += 1;
-      if (scanned >= maxEntries || results.length >= resultLimit) break;
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         if (!["node_modules", ".git", ".cache"].includes(entry.name)) queue.push(full);
@@ -192,14 +237,16 @@ async function searchFiles(params) {
       }
       if (!entry.isFile()) continue;
       if (mode === "name") {
-        if (entry.name.toLowerCase().includes(query)) results.push({ path: full, match: "name" });
+        const name = caseSensitive ? entry.name : entry.name.toLowerCase();
+        if (name.includes(query)) results.push({ path: full, match: "name" });
         continue;
       }
       try {
         const stat = await fs.stat(full);
         if (stat.size > Math.min(maxReadBytes, 256 * 1024)) continue;
         const content = await fs.readFile(full, "utf8");
-        const index = content.toLowerCase().indexOf(query);
+        const haystack = caseSensitive ? content : content.toLowerCase();
+        const index = haystack.indexOf(query);
         if (index >= 0) {
           const start = Math.max(0, index - 120), end = Math.min(content.length, index + query.length + 240);
           results.push({ path: full, match: "content", excerpt: content.slice(start, end) });
@@ -207,7 +254,12 @@ async function searchFiles(params) {
       } catch {}
     }
   }
-  return { root, mode, query: params.query, scanned, results, truncated: scanned >= maxEntries };
+  if (results.length >= resultLimit) truncationReason ??= "result_limit";
+  return {
+    root, mode, query: params.query, caseSensitive,
+    scanned, results, resultLimit, searchTimeoutMs, elapsedMs: Date.now() - startedAt,
+    truncated: truncationReason !== null, truncationReason
+  };
 }
 
 function firstCommands(command) {
@@ -251,7 +303,8 @@ const actions = new Map([
   })],
   ["device.capabilities", async () => capabilitySummary()],
   ["device.health", async () => healthSummary()],
-  ["fs.list", listDirectory], ["fs.read", readFile], ["fs.info", fileInfo], ["fs.write", writeFile],
+  ["fs.list", listDirectory], ["fs.read", readFile], ["fs.read_chunk", readFileChunk],
+  ["fs.info", fileInfo], ["fs.write", writeFile],
   ["fs.search", searchFiles], ["process.exec", executeCommand]
 ]);
 
@@ -278,6 +331,7 @@ async function connect() {
           write: allowWrite,
           shell: allowShell,
           directoryPagination: true,
+          byteRangeReading: true,
           capabilityDiscovery: true,
           healthReporting: true
         }

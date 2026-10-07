@@ -25,6 +25,8 @@ This record describes features present in the authoritative repository source af
 - Device capability discovery including enabled read/search/write/shell state and configured limits.
 - Stable directory pagination using `offset`, `limit`, `totalEntries`, and `nextOffset`.
 - Connected-device summaries include explicit online state and richer agent metadata.
+- Base64 byte-range file reads with offset continuation, EOF, and a per-call output ceiling, including files above ordinary text-read limits.
+- Deterministically ordered bounded search with case-sensitive matching and explicit result, scan, and cooperative time-limit reasons.
 
 ## Connection Identity Hardening
 

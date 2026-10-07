@@ -19,6 +19,12 @@ npm run chat -- "Search my home directory for files containing Wardveil"
 
 The CLI can list devices, inspect broker/device health, inspect device capabilities, ping devices, page through directories, read approved text files, search approved roots, and inspect metadata.
 
+## Large Files and Search
+
+The ordinary `read_file` tool retains its size ceiling. Use `goreecloud.remote.read_file_chunk` to read an approved large file from byte offset 0, advancing with `nextOffset` until `eof` is true. Each returned `content` field is base64-encoded file bytes, not decoded text. UTF-8 code points can span multiple chunks, so decode only after reassembling the bytes. There is no snapshot guarantee if the source changes between calls.
+
+The `search_files` tool accepts optional `caseSensitive` (default false) and `maxResults` (up to 200). Results expose `truncationReason` as `result_limit`, `scan_limit`, or `time_limit`. The agent checks the configured search deadline between operations but does not interrupt an active filesystem call.
+
 ## Safety
 
 - Requests outside configured allowed roots are rejected.
