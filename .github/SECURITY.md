@@ -61,6 +61,12 @@ In addition, `scripts/chat.mjs` has its own read-only `allowed_tools` list and d
 
 This means enabling an agent feature alone does not automatically make that feature available through the chat CLI.
 
+## Large-file read-only authorization boundary
+
+The new `goreecloud.remote.read_file_chunk` MCP tool returns base64-encoded byte ranges from regular files resolved under `AGENT_ALLOWED_ROOTS`. The agent enforces a per-call limit of the lesser of 65,536 bytes or the configured maximum read size; the broker schema caps requests at 65,536 bytes. This does **not** limit cumulative data returned across many calls or prevent reading sensitive files that are already inside an overly broad root.
+
+The tool is included in the Development chat CLI's explicit read-only allowlist. MCP responses are made available to the requesting AI client. Maintain narrow allowed roots, protect runtime credential directories, and avoid including secret-bearing folders in the agent's read scope. Binary chunk retrieval and content extraction are not covered by an accepted Privacy Shield policy or per-file authorization workflow. Repeated byte-range requests are not snapshot-consistent when a file changes mid-read.
+
 ## Secret handling
 
 Never commit:

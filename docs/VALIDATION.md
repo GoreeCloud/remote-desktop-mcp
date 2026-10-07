@@ -233,7 +233,25 @@ The local candidate security suite passed checks for:
 
 The extended real-agent smoke suite passed allowed-root rejection, excessive directory-page limit rejection, end-of-directory paging, read access, and disabled write/shell checks. Both local syntax checking and the dependency audit passed; the audit reported zero known vulnerabilities at the selected threshold.
 
-These are local source-candidate regression results, not public-exposure, hostile-device, production-identity, deployment, or release acceptance evidence. GitHub exact-head CI validation and the merge/readback gates must independently pass before the hardening is treated as authoritative main.
+Those tests subsequently passed GitHub Node CI and Platform Contract 2.0 conformance on Pull Request #4. PR #4 was merged and confirmed in `main` at commit `988d0fc7e68421973ce844806860db3728e28596`; local development services were restarted on that commit and reported broker/agent/tunnel active with one connected device and tunnel readiness. This is Development validation, not public-exposure, production-identity, or release acceptance evidence.
+
+## Large-File Read and Search Maturity — Development Candidate
+
+**Source candidate:** `58b687b0fc40b0f95f57428070081ce8a72569ed` (Pull Request #5). This is candidate-stage evidence; merging and deployment require separate verification.
+
+The authorized Linux x64 Development laptop's local isolated broker/agent smoke run passed the following checks:
+
+- The ordinary text reader still refuses a file exceeding `AGENT_MAX_READ_BYTES`.
+- The new `goreecloud.remote.read_file_chunk` reads bounded base64-encoded byte ranges from a file exceeding 1 MiB without requiring the entire file in memory.
+- Consecutive 16-byte and 64-byte pages preserve exact byte values and return advancing continuation offsets.
+- The final two bytes of a Unicode character remain intact, and the EOF response reports an empty page and no continuation.
+- Requests exceeding 65,536 bytes are rejected; requests outside configured allowed roots are denied.
+- Filename search supports optional case-sensitive matching and reports `result_limit` when results reach the configured bound.
+- Previously implemented authorization, connection-isolation, pagination, and disabled write/shell smoke checks still pass.
+
+The local source-candidate syntax checks, high-severity dependency audit (zero reported vulnerabilities at that point in time), and patch-whitespace checks passed. GitHub Node CI and Platform Contract 2.0 conformance passed on source head `58b687b`, before this documentation reconciliation. The updated documentation commit must receive its **own exact-head CI validation** before the PR can be made ready and considered for merge.
+
+**Limitations:** The search time budget is cooperative and may overrun during an active filesystem call. Chunk reads are not a stable file snapshot if source content changes between calls. The current tests do not qualify Windows/macOS, production public access, production authorization, privileged operations, or production recovery.
 
 ## Fail-closed controls validated
 

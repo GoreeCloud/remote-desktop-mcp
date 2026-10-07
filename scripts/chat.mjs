@@ -12,6 +12,7 @@ const READ_ONLY_TOOLS = [
   "goreecloud.remote.ping",
   "goreecloud.remote.list_directory",
   "goreecloud.remote.read_file",
+  "goreecloud.remote.read_file_chunk",
   "goreecloud.remote.search_files",
   "goreecloud.remote.get_file_info",
 ];

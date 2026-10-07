@@ -52,6 +52,8 @@ The current implementation has been validated end-to-end for read-only access:
 - the Responses API can discover and call the MCP tools through the tunnel;
 - `npm run chat` can list devices, inspect broker/device health, inspect device capabilities, page through directories, read files, search files, inspect metadata, and ping the agent;
 - directory listing supports deterministically ordered bounded pagination;
+- approved files larger than the ordinary text-read limit can be read in base64 byte chunks (up to 64 KiB each);
+- filesystem search supports case sensitivity, bounded cooperative runtime, deterministic traversal, and explicit truncation reasons;
 - broker RPC replies are bound to the exact authenticated agent connection, preventing cross-device reply substitution;
 - replaced agent connections fail pending old requests without affecting the replacement agent's requests;
 - file writes and shell execution remain disabled.
@@ -118,6 +120,7 @@ Read-only tools currently allowed by the OpenAI API CLI:
 - `goreecloud.remote.ping`
 - `goreecloud.remote.list_directory`
 - `goreecloud.remote.read_file`
+- `goreecloud.remote.read_file_chunk`
 - `goreecloud.remote.search_files`
 - `goreecloud.remote.get_file_info`
 

@@ -1,5 +1,12 @@
 # GoreeCloud Remote MCP Changelog
 
+## 2026-10-06 — Bounded file reading and search maturity
+
+- Added bounded base64 byte-range file reading with continuation offsets and explicit EOF, without relaxing ordinary text-reader limits.
+- Added case-sensitive search, deterministic traversal, cooperative search deadlines, and explicit truncation reasons.
+- Expanded real-agent regression checks for large-file byte fidelity, Unicode boundary bytes, size caps, and root confinement.
+- Preserved disabled-by-default file writing and shell execution. This remains a Development change, not production acceptance.
+
 ## 2026-10-06 — Connection Identity Security Hardening
 
 ### Fixed

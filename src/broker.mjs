@@ -176,6 +176,16 @@ function createMcpServer() {
   }, async ({ deviceId, path: targetPath, offset, length }) =>
     textResult(await rpc(deviceId, "fs.read", { path: targetPath, offset, length })));
 
+  server.registerTool("goreecloud.remote.read_file_chunk", {
+    description: "Read a bounded base64 byte range from an allowed local file, including files larger than the ordinary text-read limit.",
+    inputSchema: {
+      deviceId: z.string().min(1), path: z.string().min(1),
+      offset: z.number().int().nonnegative().optional(),
+      length: z.number().int().positive().max(65536).optional()
+    }
+  }, async ({ deviceId, path: targetPath, offset, length }) =>
+    textResult(await rpc(deviceId, "fs.read_chunk", { path: targetPath, offset, length })));
+
   server.registerTool("goreecloud.remote.get_file_info", {
     description: "Get metadata for a file or directory within allowed roots.",
     inputSchema: { deviceId: z.string().min(1), path: z.string().min(1) }
@@ -186,10 +196,11 @@ function createMcpServer() {
     inputSchema: {
       deviceId: z.string().min(1), root: z.string().min(1), query: z.string().min(1).max(200),
       mode: z.enum(["name", "content"]).default("name"),
+      caseSensitive: z.boolean().optional(),
       maxResults: z.number().int().positive().max(200).default(50)
     }
-  }, async ({ deviceId, root, query, mode, maxResults }) =>
-    textResult(await rpc(deviceId, "fs.search", { root, query, mode, maxResults })));
+  }, async ({ deviceId, root, query, mode, caseSensitive, maxResults }) =>
+    textResult(await rpc(deviceId, "fs.search", { root, query, mode, caseSensitive, maxResults })));
 
   server.registerTool("goreecloud.remote.write_file", {
     description: "Write a UTF-8 text file when writes are explicitly enabled on the agent.",
